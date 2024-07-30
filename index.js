@@ -1,59 +1,60 @@
-//create cars api using express
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 const app = express();
-const port = 8080;
+const PORT = process.env.PORT || 8080;
+const dbPath = path.resolve(__dirname, 'database.db');
+const db = new sqlite3.Database(dbPath);
 
-app.use(express.json());
 app.use(cors());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-let books = [
-  { id: 1, title: '1984', author: 'George Orwell' },
-  { id: 2, title: 'To Kill a Mockingbird', author: 'Harper Lee' },
-];
+// Signup endpoint
+app.post('/signup', async (req, res) => {
+  const { username, email, password } = req.body;
 
-// Get all books
-app.get('/books', (req, res) => {
-  res.json(books);
+  if (!username || !email || !password) {
+    return res.status(400).send('All fields are required');
+  }
+
+  try {
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Insert user into the database
+    db.run(`INSERT INTO Users (username, email, password) VALUES (?, ?, ?)`,
+      [username, email, hashedPassword],
+      function(err) {
+        if (err) {
+          console.error('Error creating user:', err.message);
+          res.status(500).send('Internal Server Error');
+        } else {
+          res.status(201).json({ message: 'User created successfully' });
+        }
+      });
+  } catch (err) {
+    console.error('Error creating user:', err.message);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
-// Get a single book by ID
-app.get('/books/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id));
-  if (!book) return res.status(404).send('Book not found');
-  res.json(book);
+// Get users endpoint
+app.get('/users', (req, res) => {
+  db.all(`SELECT id, username, email FROM Users`, [], (err, rows) => {
+    if (err) {
+      console.error('Error retrieving users:', err.message);
+      res.status(500).send('Internal Server Error');
+    } else {
+      res.status(200).json(rows);
+    }
+  });
 });
 
-// Create a new book
-app.post('/books', (req, res) => {
-  const newBook = {
-    id: books.length + 1,
-    title: req.body.title,
-    author: req.body.author,
-  };
-  books.push(newBook);
-  res.status(201).json(newBook);
-});
-
-// Update an existing book by ID
-app.put('/books/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id));
-  if (!book) return res.status(404).send('Book not found');
-
-  book.title = req.body.title;
-  book.author = req.body.author;
-  res.json(book);
-});
-
-// Delete a book by ID
-app.delete('/books/:id', (req, res) => {
-  const bookIndex = books.findIndex(b => b.id === parseInt(req.params.id));
-  if (bookIndex === -1) return res.status(404).send('Book not found');
-
-  books.splice(bookIndex, 1);
-  res.status(204).send();
-});
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}/`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
