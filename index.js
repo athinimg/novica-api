@@ -43,6 +43,30 @@ app.post('/signup', async (req, res) => {
   }
 });
 
+// Login endpoint
+app.post('/login', (req, res) => {
+  const { email, password } = req.body;
+
+  db.get(`SELECT * FROM Users WHERE email = ?`, [email], async (err, user) => {
+      if (err) {
+          return res.status(500).send('Internal Server Error');
+      }
+
+      if (!user) {
+          return res.status(400).send('User not found');
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+
+      if (!isValidPassword) {
+          return res.status(400).send('Invalid password');
+      }
+
+      // Authentication successful
+      res.status(200).json({ username: user.username }); // Send username in response
+  });
+});
+
 // Get users endpoint
 app.get('/users', (req, res) => {
   db.all(`SELECT id, username, email FROM Users`, [], (err, rows) => {
