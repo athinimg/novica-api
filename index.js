@@ -79,6 +79,30 @@ app.get('/users', (req, res) => {
   });
 });
 
+// Endpoint to get user by email
+app.get('/user/:email', (req, res) => {
+  const { email } = req.params;
+
+  if (!email) {
+    return res.status(400).send('Email parameter is required');
+  }
+
+  const query = 'SELECT * FROM Users WHERE email = ?';
+  db.get(query, [email], (err, row) => {
+    if (err) {
+      console.error('Error retrieving user:', err.message);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    if (!row) {
+      return res.status(404).send('User not found');
+    }
+
+    res.status(200).json(row);
+  });
+});
+
+
 //endpoint for creating a new novel
 app.post('/novels', (req, res) => {
   const { userID, title, genre, summary } = req.body;
