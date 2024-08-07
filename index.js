@@ -137,17 +137,26 @@ app.get('/novels/:userID', (req, res) => {
   });
 });
 
-//endpoint for getting a specific novel by id
-app.get('/novels/novel/:novelID', (req, res) => {
-  const { novelID } = req.params;
+// Endpoint for getting a specific novel by title and userID
+app.get('/novel/:UserID/:Title', (req, res) => {
+  const { Title, UserID } = req.params;
 
-  db.get(`SELECT * FROM Novels WHERE NovelID = ?`, [novelID], (err, row) => {
+  if (!Title || !UserID) {
+    return res.status(400).send('Title and UserID parameters are required');
+  }
+
+  const query = 'SELECT * FROM Novels WHERE Title = ? AND UserID = ?';
+  db.get(query, [Title, UserID], (err, row) => {
     if (err) {
       console.error('Error retrieving novel:', err.message);
-      res.status(500).send('Internal Server Error');
-    } else {
-      res.status(200).json(row);
+      return res.status(500).send('Internal Server Error');
     }
+
+    if (!row) {
+      return res.status(404).send('Novel not found');
+    }
+
+    res.status(200).json(row);
   });
 });
 
