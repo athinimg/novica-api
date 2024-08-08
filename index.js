@@ -160,6 +160,8 @@ app.get('/novel/:UserID/:Title', (req, res) => {
   });
 });
 
+
+
 //endpoint for updating details of a novel
 app.put('/novels/:novelID', (req, res) => {
   const novelID = req.params.novelID;
@@ -244,10 +246,10 @@ app.get('/chapters/:novelID', (req, res) => {
 });
 
 //endpoint to get a single chapter from a novel
-app.get('/chapters/chapter/:chapterID', (req, res) => {
-  const { chapterID } = req.params;
+app.get('/chapters/:novelID/:title', (req, res) => {
+  const { novelID, title } = req.params;
 
-  db.get(`SELECT * FROM Chapters WHERE ChapterID = ?`, [chapterID], (err, row) => {
+  db.get(`SELECT * FROM Chapters WHERE NovelID = ? and Title = ?`, [novelID, title], (err, row) => {
     if (err) {
       console.error('Error retrieving chapter:', err.message);
       res.status(500).send('Internal Server Error');
@@ -257,28 +259,32 @@ app.get('/chapters/chapter/:chapterID', (req, res) => {
   });
 });
 
-//endpoint update a chapter of a novel
-app.put('/chapters/:chapterID', (req, res) => {
-  const { chapterID } = req.params;
-  const { title, content } = req.body;
+//update chapter of a novel
+app.put('/chapters/:novelID/:title', (req, res) => {
+  const { novelID, title } = req.params;
+  const { content } = req.body;
 
-  db.run(`UPDATE Chapters SET Title = ?, Content = ? WHERE ChapterID = ?`,
-    [title, content, chapterID],
-    function (err) {
-      if (err) {
-        console.error('Error updating chapter:', err.message);
-        res.status(500).send('Internal Server Error');
-      } else {
-        res.status(200).send('Chapter updated successfully');
-      }
-    });
+  const updateQuery = `
+    UPDATE Chapters 
+    SET Content = ? 
+    WHERE NovelID = ? AND Title = ?`;
+
+  db.run(updateQuery, [content, novelID, title], function (err) {
+    if (err) {
+      console.error('Error updating chapter:', err.message);
+      res.status(500).send('Internal Server Error');
+    } else {
+      res.status(200).send('Chapter updated successfully');
+    }
+  });
 });
 
-//endpoint for deleting a chapter
-app.delete('/chapters/:chapterID', (req, res) => {
-  const { chapterID } = req.params;
 
-  db.run(`DELETE FROM Chapters WHERE ChapterID = ?`, [chapterID], function (err) {
+//endpoint for deleting a chapter
+app.delete('/chapters/:novelID/:title', (req, res) => {
+  const { novelID, title } = req.params;
+
+  db.run(`DELETE FROM Chapters WHERE NovelID = ? and Title = ?`, [novelID, title], function (err) {
     if (err) {
       console.error('Error deleting chapter:', err.message);
       res.status(500).send('Internal Server Error');
@@ -308,7 +314,7 @@ app.post('/characters', (req, res) => {
     });
 });
 
-//endpoint for seeing characters of a novel
+//endpoint for getting characters of a novel
 app.get('/characters/:novelID', (req, res) => {
   const { novelID } = req.params;
 
@@ -323,41 +329,157 @@ app.get('/characters/:novelID', (req, res) => {
 });
 
 //endpoint for getting a single character of a novel
-app.get('/characters/character/:characterID', (req, res) => {
-  const { characterID } = req.params;
+app.get('/characters/:novelID/:name', (req, res) => {
+  const { novelID, name } = req.params;
 
-  db.get(`SELECT * FROM Characters WHERE CharacterID = ?`, [characterID], (err, row) => {
+  db.all(`SELECT * FROM Characters WHERE NovelID = ? and Name = ?`, [novelID, name], (err, rows) => {
     if (err) {
-      console.error('Error retrieving character:', err.message);
+      console.error('Error retrieving characters:', err.message);
       res.status(500).send('Internal Server Error');
     } else {
-      res.status(200).json(row);
+      res.status(200).json(rows);
     }
   });
 });
 
 //endpoint for updating details of a character
-app.put('/characters/:characterID', (req, res) => {
-  const { characterID } = req.params;
-  const { name, description, role } = req.body;
+app.put('/characters/:novelID/:name', (req, res) => {
+  const { novelID, name } = req.params;
+  const {
+    description,
+    role,
+    nickname,
+    Appearance,
+    Parents,
+    Siblings,
+    Significant_other,
+    Gender,
+    Nationality,
+    Birth_Date,
+    Where_they_live,
+    Job_status,
+    Biggest_fear,
+    IQ,
+    Eating_Habits,
+    Food_preferences,
+    Music_preferences,
+    Do_they_keep_a_journal,
+    What_excites_them,
+    Pet_peeves,
+    Planned_spontaneous,
+    Leader_follower,
+    Group_alone,
+    Sexual_activity,
+    General_health,
+    handwriting,
+    Things_in_glove_compartment,
+    Things_kept_in_backpack,
+    talents,
+    flaws,
+    Old_Halloween_costumes,
+    Drugs_alcohol,
+    passwords,
+    Usernames_social_media,
+    Prized_possession,
+    Special_places,
+    Special_memories,
+    obsessions,
+    As_seen_by_self,
+    As_seen_by_others,
+    ambitions,
+    hobbies,
+    Main_mode_of_transportation
+  } = req.body;
 
-  db.run(`UPDATE Characters SET Name = ?, Description = ?, Role = ? WHERE CharacterID = ?`,
-    [name, description, role, characterID],
-    function (err) {
+  // Fetch the existing character data
+  db.get('SELECT * FROM Characters WHERE NovelID = ? AND Name = ?', [novelID, name], (err, row) => {
+    if (err) {
+      console.error('Error fetching character:', err.message);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    if (!row) {
+      return res.status(404).send('Character not found');
+    }
+
+    // Create the update query dynamically based on provided fields
+    let updateFields = [];
+    let params = [];
+    
+    if (description !== undefined) { updateFields.push('Description = ?'); params.push(description); }
+    if (role !== undefined) { updateFields.push('Role = ?'); params.push(role); }
+    if (nickname !== undefined) { updateFields.push('nickname = ?'); params.push(nickname); }
+    if (Appearance !== undefined) { updateFields.push('Appearance = ?'); params.push(Appearance); }
+    if (Parents !== undefined) { updateFields.push('Parents = ?'); params.push(Parents); }
+    if (Siblings !== undefined) { updateFields.push('Siblings = ?'); params.push(Siblings); }
+    if (Significant_other !== undefined) { updateFields.push('Significant_other = ?'); params.push(Significant_other); }
+    if (Gender !== undefined) { updateFields.push('Gender = ?'); params.push(Gender); }
+    if (Nationality !== undefined) { updateFields.push('Nationality = ?'); params.push(Nationality); }
+    if (Birth_Date !== undefined) { updateFields.push('Birth_Date = ?'); params.push(Birth_Date); }
+    if (Where_they_live !== undefined) { updateFields.push('Where_they_live = ?'); params.push(Where_they_live); }
+    if (Job_status !== undefined) { updateFields.push('Job_status = ?'); params.push(Job_status); }
+    if (Biggest_fear !== undefined) { updateFields.push('Biggest_fear = ?'); params.push(Biggest_fear); }
+    if (IQ !== undefined) { updateFields.push('IQ = ?'); params.push(IQ); }
+    if (Eating_Habits !== undefined) { updateFields.push('Eating_Habits = ?'); params.push(Eating_Habits); }
+    if (Food_preferences !== undefined) { updateFields.push('Food_preferences = ?'); params.push(Food_preferences); }
+    if (Music_preferences !== undefined) { updateFields.push('Music_preferences = ?'); params.push(Music_preferences); }
+    if (Do_they_keep_a_journal !== undefined) { updateFields.push('Do_they_keep_a_journal = ?'); params.push(Do_they_keep_a_journal); }
+    if (What_excites_them !== undefined) { updateFields.push('What_excites_them = ?'); params.push(What_excites_them); }
+    if (Pet_peeves !== undefined) { updateFields.push('Pet_peeves = ?'); params.push(Pet_peeves); }
+    if (Planned_spontaneous !== undefined) { updateFields.push('Planned_spontaneous = ?'); params.push(Planned_spontaneous); }
+    if (Leader_follower !== undefined) { updateFields.push('Leader_follower = ?'); params.push(Leader_follower); }
+    if (Group_alone !== undefined) { updateFields.push('Group_alone = ?'); params.push(Group_alone); }
+    if (Sexual_activity !== undefined) { updateFields.push('Sexual_activity = ?'); params.push(Sexual_activity); }
+    if (General_health !== undefined) { updateFields.push('General_health = ?'); params.push(General_health); }
+    if (handwriting !== undefined) { updateFields.push('handwriting = ?'); params.push(handwriting); }
+    if (Things_in_glove_compartment !== undefined) { updateFields.push('Things_in_glove_compartment = ?'); params.push(Things_in_glove_compartment); }
+    if (Things_kept_in_backpack !== undefined) { updateFields.push('Things_kept_in_backpack = ?'); params.push(Things_kept_in_backpack); }
+    if (talents !== undefined) { updateFields.push('talents = ?'); params.push(talents); }
+    if (flaws !== undefined) { updateFields.push('flaws = ?'); params.push(flaws); }
+    if (Old_Halloween_costumes !== undefined) { updateFields.push('Old_Halloween_costumes = ?'); params.push(Old_Halloween_costumes); }
+    if (Drugs_alcohol !== undefined) { updateFields.push('Drugs_alcohol = ?'); params.push(Drugs_alcohol); }
+    if (passwords !== undefined) { updateFields.push('passwords = ?'); params.push(passwords); }
+    if (Usernames_social_media !== undefined) { updateFields.push('Usernames_social_media = ?'); params.push(Usernames_social_media); }
+    if (Prized_possession !== undefined) { updateFields.push('Prized_possession = ?'); params.push(Prized_possession); }
+    if (Special_places !== undefined) { updateFields.push('Special_places = ?'); params.push(Special_places); }
+    if (Special_memories !== undefined) { updateFields.push('Special_memories = ?'); params.push(Special_memories); }
+    if (obsessions !== undefined) { updateFields.push('obsessions = ?'); params.push(obsessions); }
+    if (As_seen_by_self !== undefined) { updateFields.push('As_seen_by_self = ?'); params.push(As_seen_by_self); }
+    if (As_seen_by_others !== undefined) { updateFields.push('As_seen_by_others = ?'); params.push(As_seen_by_others); }
+    if (ambitions !== undefined) { updateFields.push('ambitions = ?'); params.push(ambitions); }
+    if (hobbies !== undefined) { updateFields.push('hobbies = ?'); params.push(hobbies); }
+    if (Main_mode_of_transportation !== undefined) { updateFields.push('Main_mode_of_transportation = ?'); params.push(Main_mode_of_transportation); }
+
+    // Ensure that there is at least one field to update
+    if (updateFields.length === 0) {
+      return res.status(400).send('No fields provided for update');
+    }
+
+    const updateQuery = `
+      UPDATE Characters 
+      SET ${updateFields.join(', ')}
+      WHERE NovelID = ? AND Name = ?`;
+
+    params.push(novelID, name);
+
+    db.run(updateQuery, params, function (err) {
       if (err) {
         console.error('Error updating character:', err.message);
-        res.status(500).send('Internal Server Error');
-      } else {
-        res.status(200).send('Character updated successfully');
+        return res.status(500).send('Internal Server Error');
       }
+
+      res.status(200).send('Character updated successfully');
     });
+  });
 });
 
-//endpoint for deleting a character
-app.delete('/characters/:characterID', (req, res) => {
-  const { characterID } = req.params;
 
-  db.run(`DELETE FROM Characters WHERE CharacterID = ?`, [characterID], function (err) {
+
+//endpoint for deleting a character
+app.delete('/characters/:novelID/:name', (req, res) => {
+  const { novelID, name } = req.params;
+
+  db.run(`DELETE FROM Characters WHERE NovelID = ? and Name = ?`, [novelID, name], function (err) {
     if (err) {
       console.error('Error deleting character:', err.message);
       res.status(500).send('Internal Server Error');
