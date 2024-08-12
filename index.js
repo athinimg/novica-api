@@ -260,16 +260,16 @@ app.get('/chapters/:novelID/:title', (req, res) => {
 });
 
 //update chapter of a novel
-app.put('/chapters/:novelID/:title', (req, res) => {
-  const { novelID, title } = req.params;
+app.put('/chapters/:novelID', (req, res) => {
+  const { novelID } = req.params;
   const { content } = req.body;
 
   const updateQuery = `
     UPDATE Chapters 
     SET Content = ? 
-    WHERE NovelID = ? AND Title = ?`;
+    WHERE NovelID = ?`;
 
-  db.run(updateQuery, [content, novelID, title], function (err) {
+  db.run(updateQuery, [content, novelID], function (err) {
     if (err) {
       console.error('Error updating chapter:', err.message);
       res.status(500).send('Internal Server Error');
