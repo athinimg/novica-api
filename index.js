@@ -259,17 +259,17 @@ app.get('/chapters/:novelID/:title', (req, res) => {
   });
 });
 
-//update chapter of a novel
-app.put('/chapters/:novelID', (req, res) => {
-  const { novelID } = req.params;
+// Update a specific chapter of a novel
+app.put('/chapters/:novelID/:chapterID', (req, res) => {
+  const { novelID, chapterID } = req.params;
   const { content } = req.body;
 
   const updateQuery = `
     UPDATE Chapters 
     SET Content = ? 
-    WHERE NovelID = ?`;
+    WHERE NovelID = ? AND ChapterID = ?`;
 
-  db.run(updateQuery, [content, novelID], function (err) {
+  db.run(updateQuery, [content, novelID, chapterID], function (err) {
     if (err) {
       console.error('Error updating chapter:', err.message);
       res.status(500).send('Internal Server Error');
@@ -278,7 +278,6 @@ app.put('/chapters/:novelID', (req, res) => {
     }
   });
 });
-
 
 //endpoint for deleting a chapter
 app.delete('/chapters/:novelID/:title', (req, res) => {
