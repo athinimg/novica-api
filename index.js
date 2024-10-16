@@ -259,17 +259,17 @@ app.get('/chapters/:novelID/:title', (req, res) => {
   });
 });
 
-// Update a specific chapter of a novel
-app.put('/chapters/:novelID/:chapterID', (req, res) => {
-  const { novelID, chapterID } = req.params;
+//update chapter of a novel
+app.put('/chapters/:novelID', (req, res) => {
+  const { novelID } = req.params;
   const { content } = req.body;
 
   const updateQuery = `
     UPDATE Chapters 
     SET Content = ? 
-    WHERE NovelID = ? AND ChapterID = ?`;
+    WHERE NovelID = ?`;
 
-  db.run(updateQuery, [content, novelID, chapterID], function (err) {
+  db.run(updateQuery, [content, novelID], function (err) {
     if (err) {
       console.error('Error updating chapter:', err.message);
       res.status(500).send('Internal Server Error');
@@ -278,6 +278,7 @@ app.put('/chapters/:novelID/:chapterID', (req, res) => {
     }
   });
 });
+
 
 //endpoint for deleting a chapter
 app.delete('/chapters/:novelID/:title', (req, res) => {
@@ -648,7 +649,27 @@ app.delete('/settings/:settingID', (req, res) => {
   });
 });
 
-//endpoint
+// Endpoint to get a random prompt by genre
+app.get('/prompts/random/:genre', (req, res) => {
+  const { genre } = req.params;
+
+  // Query to get a random prompt of the specified genre
+  const query = `SELECT * FROM prompts WHERE genre = ? ORDER BY RANDOM() LIMIT 1`;
+
+  db.get(query, [genre], (err, prompt) => {
+    if (err) {
+      console.error('Error retrieving prompt:', err.message);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    if (!prompt) {
+      return res.status(404).send('No prompts found for this genre');
+    }
+
+    res.status(200).json(prompt);
+  });
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
